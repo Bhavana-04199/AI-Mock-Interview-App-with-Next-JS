@@ -14,7 +14,7 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 text-center text-white p-6 max-w-xl">
         <h1 className="text-4xl md:text-6xl font-bold mb-6">
-          AI Mock Interview Bot
+         Virtual AI Interview
         </h1>
         <p className="text-lg md:text-xl mb-8">
           Tailored Interview Practice for AI Enthusiasts
