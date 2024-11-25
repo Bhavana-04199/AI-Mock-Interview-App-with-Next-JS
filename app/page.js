@@ -21,7 +21,7 @@ export default function Home() {
         </p>
         <Button
           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg"
-          onClick={() => (window.location.href = "/sign-in")} // Redirect to dashboard
+          onClick={() => (window.location.href = "/dashboard")} // Redirect to dashboard
         >
           Get Started
         </Button>
