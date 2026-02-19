@@ -26,32 +26,65 @@ const Feedback = ({ params }) => {
       .where(eq(UserAnswer.mockIdRef, params.interviewId))
       .orderBy(UserAnswer.id);
 
-    console.log("🚀 ~ GetFeedback ~ result:", result);
     setFeedbackList(result);
   };
 
-  // ✅ Calculate overall rating dynamically
-  const overallRating = useMemo(() => {
-    if (!feedbackList.length) return 0;
-    const total = feedbackList.reduce((sum, item) => sum + Number(item.rating || 0), 0);
-    return (total / feedbackList.length).toFixed(1);
+  // 🔹 Simple similarity scoring (Jaccard)
+  const calculateScore = (userAns, correctAns) => {
+    if (!userAns || !correctAns) return 0;
+
+    const u = new Set(userAns.toLowerCase().split(/\W+/));
+    const c = new Set(correctAns.toLowerCase().split(/\W+/));
+
+    const intersection = new Set([...u].filter(x => c.has(x)));
+    const union = new Set([...u, ...c]);
+
+    const similarity = intersection.size / union.size;
+    return Math.min(10, Math.max(1, (similarity * 10).toFixed(1)));
+  };
+
+  // 🔹 Extract key points (first 3 sentences)
+  const getKeyPoints = (text) => {
+    if (!text) return [];
+    return text.split('.').slice(0, 3).map(t => t.trim()).filter(Boolean);
+  };
+
+  // 🔹 Compute ratings dynamically
+  const evaluatedList = useMemo(() => {
+    return feedbackList.map(item => ({
+      ...item,
+      computedRating: calculateScore(item.userAns, item.correctAns),
+      keyPoints: getKeyPoints(item.correctAns)
+    }));
   }, [feedbackList]);
+
+  const overallRating = useMemo(() => {
+    if (!evaluatedList.length) return 0;
+    const total = evaluatedList.reduce((sum, item) => sum + Number(item.computedRating), 0);
+    return (total / evaluatedList.length).toFixed(1);
+  }, [evaluatedList]);
+
+  // 🔹 Translate helper
+  const translateText = (text) => {
+    const lang = navigator.language || "en";
+    const url = `https://translate.google.com/?sl=auto&tl=${lang}&text=${encodeURIComponent(text)}&op=translate`;
+    window.open(url, "_blank");
+  };
 
   return (
     <div className='p-10'>
       <h2 className='text-3xl font-bold text-green-600'>Congratulations!</h2>
       <h2 className='font-bold text-2xl'>Here is your interview feedback</h2>
 
-      {feedbackList?.length == 0 ?
+      {evaluatedList.length === 0 ?
         <h2 className='font-bold text-lg text-green-500'>No interview Feedback</h2>
         :
         <>
-          {/* ✅ Dynamic Overall Rating */}
           <h2 className='text-primary text-lg my-2'>
             Your overall interview rating: <strong>{overallRating}/10</strong>
           </h2>
 
-          {/* ✅ Overall Progress Bar */}
+          {/* Overall Graph */}
           <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
             <div
               className="bg-green-500 h-4 rounded-full"
@@ -63,8 +96,15 @@ const Feedback = ({ params }) => {
             Find below interview questions with correct answers, your answer and feedback for improvements for your next interview
           </h2>
 
-          {feedbackList && feedbackList.map((item, index) => {
-            const ratingPercent = (Number(item.rating || 0) / 10) * 100;
+          {evaluatedList.map((item, index) => {
+            const ratingPercent = (item.computedRating / 10) * 100;
+
+            const combinedText = `
+            Question: ${item.question}
+            Your Answer: ${item.userAns}
+            Correct Answer: ${item.correctAns}
+            Feedback: ${item.feedback}
+            `;
 
             return (
               <Collapsible key={index} className='mt-7'>
@@ -75,12 +115,12 @@ const Feedback = ({ params }) => {
                 <CollapsibleContent>
                   <div className='flex flex-col gap-2'>
 
-                    {/* ✅ Rating */}
+                    {/* Rating */}
                     <h2 className='text-red-500 p-2 border rounded-lg'>
-                      <strong>Rating:</strong> {item.rating}/10
+                      <strong>Rating:</strong> {item.computedRating}/10
                     </h2>
 
-                    {/* ✅ Question Progress Bar */}
+                    {/* Graph */}
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div
                         className="bg-blue-500 h-3 rounded-full"
@@ -97,9 +137,25 @@ const Feedback = ({ params }) => {
                       <strong>Correct Answer Looks Like: </strong>{item.correctAns}
                     </h2>
 
+                    {/* Key Points */}
+                    <div className='p-2 border rounded-lg bg-yellow-50 text-sm'>
+                      <strong>Key Points:</strong>
+                      <ul className='list-disc ml-5'>
+                        {item.keyPoints.map((kp, i) => <li key={i}>{kp}</li>)}
+                      </ul>
+                    </div>
+
                     <h2 className='p-2 border rounded-lg bg-blue-50 text-sm text-primary'>
                       <strong>Feedback: </strong>{item.feedback}
                     </h2>
+
+                    {/* Translate Button */}
+                    <Button
+                      variant="outline"
+                      onClick={() => translateText(combinedText)}
+                    >
+                      Translate to my language
+                    </Button>
 
                   </div>
                 </CollapsibleContent>
