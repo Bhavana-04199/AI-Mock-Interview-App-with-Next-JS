@@ -14,7 +14,9 @@ import { useRouter } from 'next/navigation';
 
 const Feedback = ({ params }) => {
   const [feedbackList, setFeedbackList] = useState([]);
+  const [evaluatedList, setEvaluatedList] = useState([]);
   const [history, setHistory] = useState([]);
+  const [lang, setLang] = useState("en");
   const router = useRouter();
 
   useEffect(() => {
@@ -31,38 +33,55 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // 📈 Interview history (local storage fallback)
+  // ================= HISTORY =================
   const loadHistory = () => {
     const data = JSON.parse(localStorage.getItem("interviewHistory") || "[]");
     setHistory(data);
   };
 
-  const saveHistory = (score) => {
-    const updated = [...history, { date: new Date().toLocaleDateString(), score }];
+  const saveHistory = (score, interviewDate) => {
+    const updated = [...history, { date: interviewDate, score }];
     localStorage.setItem("interviewHistory", JSON.stringify(updated));
     setHistory(updated);
   };
 
-  // 🤖 AI scoring (API ready — fallback similarity)
+  // ================= DATE FORMAT =================
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const pad = (n) => n.toString().padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} / ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const interviewDate = useMemo(() => {
+    if (!feedbackList.length) return "";
+    const raw = feedbackList[0]?.createdAt || feedbackList[0]?.date;
+    return formatDateTime(raw);
+  }, [feedbackList]);
+
+  // ================= AI SCORING =================
   const aiScore = async (userAns, correctAns) => {
     try {
-      // 👉 Replace with your API endpoint later
-      // const res = await fetch("/api/ai-score",{method:"POST",body:JSON.stringify({userAns,correctAns})})
-      // const data = await res.json()
-      // return data.score
+      const uWords = userAns?.toLowerCase().match(/\b\w+\b/g) || [];
+      const cWords = correctAns?.toLowerCase().match(/\b\w+\b/g) || [];
 
-      // Fallback scoring
-      const u = new Set(userAns.toLowerCase().split(/\W+/));
-      const c = new Set(correctAns.toLowerCase().split(/\W+/));
-      const similarity = [...u].filter(x => c.has(x)).length / new Set([...u, ...c]).size;
-      return Math.min(10, Math.max(1, (similarity * 10).toFixed(1)));
+      if (!uWords.length) return 0;
+
+      const uSet = new Set(uWords);
+      const cSet = new Set(cWords);
+
+      const matchCount = [...uSet].filter(w => cSet.has(w)).length;
+      const coverage = matchCount / cSet.size;
+      const lengthFactor = Math.min(1, uWords.length / (cWords.length || 1));
+
+      const score = (coverage * 0.7 + lengthFactor * 0.3) * 10;
+      return Number(score.toFixed(1));
     } catch {
-      return 5;
+      return 0;
     }
   };
 
-  const [evaluatedList, setEvaluatedList] = useState([]);
-
+  // ================= EVALUATION =================
   useEffect(() => {
     const evaluate = async () => {
       const scored = await Promise.all(
@@ -77,38 +96,70 @@ const Feedback = ({ params }) => {
     if (feedbackList.length) evaluate();
   }, [feedbackList]);
 
+  // ================= OVERALL =================
   const overallRating = useMemo(() => {
     if (!evaluatedList.length) return 0;
-    const total = evaluatedList.reduce((sum, item) => sum + Number(item.computedRating), 0);
-    const avg = (total / evaluatedList.length).toFixed(1);
-    saveHistory(avg);
+    const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating), 0);
+    const avg = Number((total / evaluatedList.length).toFixed(1));
+    if (interviewDate) saveHistory(avg, interviewDate);
     return avg;
-  }, [evaluatedList]);
+  }, [evaluatedList, interviewDate]);
 
-  // 🎯 Improvement roadmap
-  const roadmap = useMemo(() => {
-    if (overallRating >= 8)
-      return ["Practice advanced scenarios", "Work on speed", "Mock leadership questions"];
-    if (overallRating >= 5)
-      return ["Improve answer structure", "Add real examples", "Revise fundamentals"];
-    return ["Learn core concepts", "Practice daily mock interviews", "Focus on clarity"];
-  }, [overallRating]);
-
-  const performanceLevel = overallRating >= 8 ? "Expert" :
+  const performanceLevel =
+    overallRating >= 8 ? "Expert" :
     overallRating >= 5 ? "Intermediate" : "Beginner";
+
+  // ================= TRANSLATION =================
+  const translatePage = async (targetLang) => {
+    setLang(targetLang);
+    try {
+      const nodes = document.querySelectorAll("[data-translate]");
+      for (const node of nodes) {
+        const text = node.innerText;
+        if (!text) continue;
+
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          body: JSON.stringify({ text, targetLang }),
+        });
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        if (data.translatedText) node.innerText = data.translatedText;
+      }
+    } catch {
+      // fallback: no translation
+    }
+  };
 
   const downloadReport = () => window.print();
 
   return (
     <div className='p-10 print:p-6'>
-      <h2 className='text-3xl font-bold text-green-600'>Congratulations!</h2>
-      <h2 className='font-bold text-2xl'>Here is your interview feedback</h2>
+
+      {/* ===== Language Selector ===== */}
+      <div className="flex justify-end mb-4 print:hidden">
+        <select
+          className="border rounded px-2 py-1"
+          value={lang}
+          onChange={(e) => translatePage(e.target.value)}
+        >
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+          <option value="kn">Kannada</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+        </select>
+      </div>
+
+      <h2 data-translate className='text-3xl font-bold text-green-600'>Congratulations!</h2>
+      <h2 data-translate className='font-bold text-2xl'>Here is your interview feedback</h2>
 
       {evaluatedList.length === 0 ?
         <h2 className='font-bold text-lg text-green-500'>No interview Feedback</h2>
         :
         <>
-          <h2 className='text-primary text-lg my-2'>
+          <h2 data-translate className='text-primary text-lg my-2'>
             Your overall interview rating: <strong>{overallRating}/10</strong>
           </h2>
 
@@ -117,7 +168,7 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* 🧠 Summary */}
+          {/* ===== Summary ===== */}
           <div className="grid md:grid-cols-3 gap-4 my-6">
             <div className="p-4 border rounded-lg bg-blue-50">
               <h3 className="font-semibold">Performance Level</h3>
@@ -129,25 +180,17 @@ const Feedback = ({ params }) => {
             </div>
             <div className="p-4 border rounded-lg bg-yellow-50">
               <h3 className="font-semibold">Interview Date</h3>
-              <p>{new Date().toLocaleDateString()}</p>
+              <p>{interviewDate}</p>
             </div>
           </div>
 
-          {/* 📊 History */}
+          {/* ===== History ===== */}
           <div className="my-6">
             <h3 className="font-semibold mb-2">Progress History</h3>
             <ul className="text-sm space-y-1">
               {history.map((h, i) => (
                 <li key={i}>{h.date} — {h.score}/10</li>
               ))}
-            </ul>
-          </div>
-
-          {/* 🎯 Roadmap */}
-          <div className="p-4 border rounded-lg bg-purple-50 my-6">
-            <h3 className="font-semibold">Personalized Improvement Roadmap</h3>
-            <ul className="list-disc ml-6">
-              {roadmap.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
           </div>
 
