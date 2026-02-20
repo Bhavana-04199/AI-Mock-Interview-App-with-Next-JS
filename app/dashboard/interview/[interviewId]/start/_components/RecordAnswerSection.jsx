@@ -18,8 +18,10 @@ const RecordAnswerSection = ({
   interviewData,
 }) => {
   const [userAnswer, setUserAnswer] = useState("");
+  const [finalAnswer, setFinalAnswer] = useState(""); // ✅ to display after stop
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
+
   const {
     error,
     interimResult,
@@ -32,34 +34,36 @@ const RecordAnswerSection = ({
     continuous: true,
     useLegacyResults: false,
   });
+
+  // ✅ append speech text
   useEffect(() => {
     results.map((result) =>
-      setUserAnswer((prevAns) => prevAns + result?.transcript)
+      setUserAnswer((prevAns) => prevAns + result?.transcript + " ")
     );
   }, [results]);
 
+  // ✅ save after recording stops
   useEffect(() => {
     if (!isRecording && userAnswer.length > 10) {
+      setFinalAnswer(userAnswer); // show final text
       UpdateUserAnswer();
+      toast.success("Answer recorded successfully ✅");
     }
   }, [userAnswer]);
 
   const StartStopRecording = async () => {
     if (isRecording) {
       stopSpeechToText();
-      // if (userAnswer?.length < 10) {
-      //   setLoading(false)
-      //   toast("Error while saving your answer,please record again");
-      //   return;
-      // }
     } else {
       startSpeechToText();
+      setFinalAnswer(""); // reset when new recording starts
     }
   };
 
   const UpdateUserAnswer = async () => {
     console.log(userAnswer, "########");
     setLoading(true);
+
     const feedbackPrompt =
       "Question:" +
       mockInterviewQuestion[activeQuestionIndex]?.question +
@@ -68,25 +72,16 @@ const RecordAnswerSection = ({
       ",Depends on question and user answer for given interview question " +
       " please give use rating for answer and feedback as area of improvement if any" +
       " in just 3 to 5 lines to improve it in JSON format with rating field and feedback field";
-    console.log(
-      "🚀 ~ file: RecordAnswerSection.jsx:38 ~ SaveUserAnswer ~ feedbackPrompt:",
-      feedbackPrompt
-    );
+
     const result = await chatSession.sendMessage(feedbackPrompt);
-    console.log(
-      "🚀 ~ file: RecordAnswerSection.jsx:46 ~ SaveUserAnswer ~ result:",
-      result
-    );
+
     const mockJsonResp = result.response
       .text()
       .replace("```json", "")
       .replace("```", "");
 
-    console.log(
-      "🚀 ~ file: RecordAnswerSection.jsx:47 ~ SaveUserAnswer ~ mockJsonResp:",
-      mockJsonResp
-    );
     const JsonfeedbackResp = JSON.parse(mockJsonResp);
+
     const resp = await db.insert(UserAnswer).values({
       mockIdRef: interviewData?.mockId,
       question: mockInterviewQuestion[activeQuestionIndex]?.question,
@@ -99,18 +94,20 @@ const RecordAnswerSection = ({
     });
 
     if (resp) {
-      toast("User Answer recorded successfully");
       setUserAnswer("");
       setResults([]);
     }
-    setResults([]);
+
     setLoading(false);
   };
 
   if (error) return <p>Web Speech API is not available in this browser 🤷‍</p>;
+
   return (
-    <div className="flex justify-cente items-center flex-col">
-      <div className="flex flex-col my-20 justify-center items-center bg-black rounded-lg p-5">
+    <div className="flex justify-center items-center flex-col">
+
+      {/* Webcam UI */}
+      <div className="flex flex-col my-10 justify-center items-center bg-black rounded-lg p-5 relative">
         <Image
           src={"/webcam.png"}
           width={200}
@@ -119,15 +116,13 @@ const RecordAnswerSection = ({
           alt="webcam"
           priority
         />
-        {/* <Webcam
-          style={{ height: 300, width: "100%", zIndex: 10 }}
-          mirrored={true}
-        /> */}
       </div>
+
+      {/* Record Button */}
       <Button
         disabled={loading}
         variant="outline"
-        className="my-10"
+        className="my-6"
         onClick={StartStopRecording}
       >
         {isRecording ? (
@@ -140,9 +135,27 @@ const RecordAnswerSection = ({
           </h2>
         )}
       </Button>
-      {/* <Button onClick={() => console.log("------", userAnswer)}>
-        Show User Answer
-      </Button> */}
+
+      {/* ✅ TEXT INPUT (User can type also) */}
+      <textarea
+        value={userAnswer}
+        onChange={(e) => setUserAnswer(e.target.value)}
+        placeholder="Your answer will appear here... you can also edit or type."
+        className="w-full max-w-2xl border rounded-lg p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
+      />
+
+      {/* ✅ SHOW FINAL ANSWER AFTER STOP */}
+      {finalAnswer && !isRecording && (
+        <div className="w-full max-w-2xl mt-4 p-4 border rounded-lg bg-green-50">
+          <h3 className="font-semibold text-green-700 mb-1">
+            Final Recorded Answer
+          </h3>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            {finalAnswer}
+          </p>
+        </div>
+      )}
+
     </div>
   );
 };
