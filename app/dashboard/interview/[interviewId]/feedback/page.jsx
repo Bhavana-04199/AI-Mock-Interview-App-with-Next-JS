@@ -16,12 +16,14 @@ const Feedback = ({ params }) => {
   const [feedbackList, setFeedbackList] = useState([]);
   const [evaluatedList, setEvaluatedList] = useState([]);
   const [history, setHistory] = useState([]);
-  const [lang, setLang] = useState("en");
+  const [languages, setLanguages] = useState([]);
+  const [lang, setLang] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     GetFeedback();
     loadHistory();
+    loadLanguages();
   }, []);
 
   const GetFeedback = async () => {
@@ -33,6 +35,18 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
+  // ================= LOAD LANGUAGES =================
+  const loadLanguages = async () => {
+    try {
+      const res = await fetch("/api/languages");
+      const data = await res.json();
+      setLanguages(data || []);
+      if (data?.length) setLang(data[0].code);
+    } catch {
+      setLanguages([]);
+    }
+  };
+
   // ================= HISTORY =================
   const loadHistory = () => {
     const data = JSON.parse(localStorage.getItem("interviewHistory") || "[]");
@@ -40,6 +54,10 @@ const Feedback = ({ params }) => {
   };
 
   const saveHistory = (score, interviewDate) => {
+    if (!interviewDate) return;
+    const exists = history.find(h => h.date === interviewDate);
+    if (exists) return;
+
     const updated = [...history, { date: interviewDate, score }];
     localStorage.setItem("interviewHistory", JSON.stringify(updated));
     setHistory(updated);
@@ -59,22 +77,30 @@ const Feedback = ({ params }) => {
     return formatDateTime(raw);
   }, [feedbackList]);
 
-  // ================= AI SCORING =================
+  // ================= SMART AI SCORING =================
   const aiScore = async (userAns, correctAns) => {
     try {
-      const uWords = userAns?.toLowerCase().match(/\b\w+\b/g) || [];
-      const cWords = correctAns?.toLowerCase().match(/\b\w+\b/g) || [];
+      if (!userAns || userAns.trim().length < 5) return 0;
 
-      if (!uWords.length) return 0;
+      const userText = userAns.toLowerCase();
+      const correctText = correctAns.toLowerCase();
 
-      const uSet = new Set(uWords);
-      const cSet = new Set(cWords);
+      // extract keywords (basic noun-like words)
+      const keywords = correctText.match(/\b[a-z]{4,}\b/g) || [];
+      const uniqueKeywords = [...new Set(keywords)];
 
-      const matchCount = [...uSet].filter(w => cSet.has(w)).length;
-      const coverage = matchCount / cSet.size;
-      const lengthFactor = Math.min(1, uWords.length / (cWords.length || 1));
+      const matched = uniqueKeywords.filter(k => userText.includes(k));
+      const coverage = matched.length / (uniqueKeywords.length || 1);
 
-      const score = (coverage * 0.7 + lengthFactor * 0.3) * 10;
+      // grammar heuristic (sentence structure)
+      const sentenceCount = (userAns.match(/[.!?]/g) || []).length;
+      const lengthFactor = Math.min(1, userAns.split(" ").length / 25);
+
+      // quality check
+      if (coverage < 0.15) return 0; // no key points → zero
+
+      const score = (coverage * 0.6 + lengthFactor * 0.25 + (sentenceCount > 0 ? 0.15 : 0)) * 10;
+
       return Number(score.toFixed(1));
     } catch {
       return 0;
@@ -99,9 +125,11 @@ const Feedback = ({ params }) => {
   // ================= OVERALL =================
   const overallRating = useMemo(() => {
     if (!evaluatedList.length) return 0;
-    const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating), 0);
+
+    const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating || 0), 0);
     const avg = Number((total / evaluatedList.length).toFixed(1));
-    if (interviewDate) saveHistory(avg, interviewDate);
+
+    saveHistory(avg, interviewDate);
     return avg;
   }, [evaluatedList, interviewDate]);
 
@@ -109,9 +137,10 @@ const Feedback = ({ params }) => {
     overallRating >= 8 ? "Expert" :
     overallRating >= 5 ? "Intermediate" : "Beginner";
 
-  // ================= TRANSLATION =================
-  const translatePage = async (targetLang) => {
-    setLang(targetLang);
+  // ================= APPLY TRANSLATION =================
+  const applyTranslation = async () => {
+    if (!lang) return;
+
     try {
       const nodes = document.querySelectorAll("[data-translate]");
       for (const node of nodes) {
@@ -120,7 +149,7 @@ const Feedback = ({ params }) => {
 
         const res = await fetch("/api/translate", {
           method: "POST",
-          body: JSON.stringify({ text, targetLang }),
+          body: JSON.stringify({ text, targetLang: lang }),
         });
         if (!res.ok) continue;
 
@@ -128,7 +157,7 @@ const Feedback = ({ params }) => {
         if (data.translatedText) node.innerText = data.translatedText;
       }
     } catch {
-      // fallback: no translation
+      // silent fallback
     }
   };
 
@@ -137,19 +166,21 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Language Selector ===== */}
-      <div className="flex justify-end mb-4 print:hidden">
+      {/* ===== Dynamic Language Selector ===== */}
+      <div className="flex justify-end gap-2 mb-4 print:hidden">
         <select
           className="border rounded px-2 py-1"
           value={lang}
-          onChange={(e) => translatePage(e.target.value)}
+          onChange={(e) => setLang(e.target.value)}
         >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-          <option value="kn">Kannada</option>
-          <option value="ta">Tamil</option>
-          <option value="te">Telugu</option>
+          {languages.map(l => (
+            <option key={l.code} value={l.code}>{l.name}</option>
+          ))}
         </select>
+
+        <Button variant="outline" onClick={applyTranslation}>
+          Apply
+        </Button>
       </div>
 
       <h2 data-translate className='text-3xl font-bold text-green-600'>Congratulations!</h2>
