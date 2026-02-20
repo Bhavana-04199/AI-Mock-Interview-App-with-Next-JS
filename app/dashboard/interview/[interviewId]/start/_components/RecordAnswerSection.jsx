@@ -6,8 +6,6 @@ import useSpeechToText from "react-hook-speech-to-text";
 import { Mic, StopCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import { chatSession } from "@/utils/GeminiAIModal";
-import { db } from "@/utils/db";
-import { UserAnswer } from "@/utils/schema";
 import { useUser } from "@clerk/nextjs";
 import moment from "moment";
 
@@ -18,8 +16,8 @@ const RecordAnswerSection = ({
 }) => {
   const [userAnswer, setUserAnswer] = useState("");
   const [finalAnswer, setFinalAnswer] = useState("");
-  const { user } = useUser();
   const [loading, setLoading] = useState(false);
+  const { user } = useUser();
 
   const {
     error,
@@ -33,18 +31,18 @@ const RecordAnswerSection = ({
     useLegacyResults: false,
   });
 
-  // 🔹 Reset when question changes
+  // Reset when question changes
   useEffect(() => {
     setUserAnswer("");
     setFinalAnswer("");
     setResults([]);
   }, [activeQuestionIndex]);
 
-  // 🔹 Append speech text
+  // Append speech text
   useEffect(() => {
-    results.forEach((result) =>
-      setUserAnswer((prev) => prev + result.transcript + " ")
-    );
+    results.forEach((result) => {
+      setUserAnswer((prev) => prev + result.transcript + " ");
+    });
   }, [results]);
 
   const StartStopRecording = () => {
@@ -68,40 +66,54 @@ const RecordAnswerSection = ({
     try {
       setLoading(true);
 
-      const feedbackPrompt =
-        "Question:" +
-        mockInterviewQuestion[activeQuestionIndex]?.question +
-        ", User Answer:" +
-        userAnswer +
-        ",Depends on question and user answer for given interview question " +
-        " please give rating and feedback in JSON with rating and feedback fields";
+      const question =
+        mockInterviewQuestion?.[activeQuestionIndex]?.question || "";
+
+      const correctAnswer =
+        mockInterviewQuestion?.[activeQuestionIndex]?.answer || "";
+
+      // AI feedback
+      const feedbackPrompt = `
+      Question: ${question}
+      User Answer: ${userAnswer}
+      Give rating (1-10) and feedback in JSON:
+      { "rating": number, "feedback": "text" }
+      `;
 
       const result = await chatSession.sendMessage(feedbackPrompt);
+      let textResp = await result.response.text();
 
-      const mockJsonResp = result.response
-        .text()
-        .replace("```json", "")
-        .replace("```", "");
+      const jsonMatch = textResp.match(/\{[\s\S]*\}/);
+      const JsonfeedbackResp = jsonMatch
+        ? JSON.parse(jsonMatch[0])
+        : { rating: 0, feedback: "No feedback generated" };
 
-      const JsonfeedbackResp = JSON.parse(mockJsonResp);
-
-      await db.insert(UserAnswer).values({
-        mockIdRef: interviewData?.mockId,
-        question: mockInterviewQuestion[activeQuestionIndex]?.question,
-        correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
-        userAns: userAnswer,
-        feedback: JsonfeedbackResp?.feedback,
-        rating: JsonfeedbackResp?.rating,
-        userEmail: user?.primaryEmailAddress?.emailAddress,
-        createdAt: moment().format("DD-MM-YYYY"),
+      // CALL API ROUTE
+      const res = await fetch("/api/save-answer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mockIdRef: interviewData?.mockId,
+          question: question,
+          correctAns: correctAnswer,
+          userAns: userAnswer,
+          feedback: JsonfeedbackResp.feedback,
+          rating: JsonfeedbackResp.rating,
+          userEmail: user?.primaryEmailAddress?.emailAddress,
+          createdAt: moment().format("DD-MM-YYYY"),
+        }),
       });
+
+      if (!res.ok) throw new Error("API failed");
 
       toast.success("Answer saved successfully ✅");
       setFinalAnswer(userAnswer);
       setUserAnswer("");
       setResults([]);
     } catch (err) {
-      console.error(err);
+      console.error("SAVE ERROR 👉", err);
       toast.error("Failed to save answer");
     } finally {
       setLoading(false);
@@ -126,11 +138,7 @@ const RecordAnswerSection = ({
       </div>
 
       {/* Record Button */}
-      <Button
-        variant="outline"
-        className="my-4"
-        onClick={StartStopRecording}
-      >
+      <Button variant="outline" className="my-4" onClick={StartStopRecording}>
         {isRecording ? (
           <h2 className="text-red-600 flex gap-2 items-center">
             <StopCircle /> Stop Recording
@@ -160,7 +168,7 @@ const RecordAnswerSection = ({
         {loading ? "Saving..." : "Save Answer"}
       </Button>
 
-      {/* Final Answer */}
+      {/* Saved Answer */}
       {finalAnswer && (
         <div className="w-full max-w-2xl mt-4 p-4 border rounded-lg bg-green-50">
           <h3 className="font-semibold text-green-700 mb-1">
