@@ -15,14 +15,58 @@ import { useRouter } from 'next/navigation';
 const Feedback = ({ params }) => {
   const [feedbackList, setFeedbackList] = useState([]);
   const [evaluatedList, setEvaluatedList] = useState([]);
-  const [language, setLanguage] = useState("en");
   const router = useRouter();
 
   useEffect(() => {
     GetFeedback();
+    loadGoogleTranslate();
+    removeTranslateBanner();
   }, []);
 
-  // ================= FETCH =================
+  // ================= REMOVE GOOGLE TOP BANNER COMPLETELY =================
+  const removeTranslateBanner = () => {
+
+    const style = document.createElement("style");
+    style.innerHTML = `
+      iframe.goog-te-banner-frame { display: none !important; }
+      .goog-te-banner-frame { display:none !important; }
+      body { top: 0px !important; position: static !important; }
+      html { top: 0px !important; }
+      .skiptranslate { display:none !important; }
+    `;
+    document.head.appendChild(style);
+
+    const removeIframe = () => {
+      const iframe = document.querySelector("iframe.goog-te-banner-frame");
+      if (iframe) iframe.remove();
+
+      document.body.style.top = "0px";
+      document.body.style.position = "static";
+    };
+
+    removeIframe();
+
+    const observer = new MutationObserver(removeIframe);
+    observer.observe(document.body, { childList: true, subtree: true });
+  };
+
+  // ================= GOOGLE TRANSLATE =================
+  const loadGoogleTranslate = () => {
+    if (window.googleTranslateElementInit) return;
+
+    window.googleTranslateElementInit = () => {
+      new window.google.translate.TranslateElement(
+        { pageLanguage: "en", autoDisplay: false },
+        "google_translate_element"
+      );
+    };
+
+    const script = document.createElement("script");
+    script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.async = true;
+    document.body.appendChild(script);
+  };
+
   const GetFeedback = async () => {
     const result = await db.select()
       .from(UserAnswer)
@@ -32,12 +76,10 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // ================= DATE =================
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "—";
-
     const pad = (n) => n.toString().padStart(2, "0");
     return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
@@ -48,64 +90,46 @@ const Feedback = ({ params }) => {
     return formatDateTime(raw);
   }, [feedbackList]);
 
-  // ================= AI EVALUATION (API) =================
-  const aiEvaluate = async (question, userAns, correctAns) => {
+  // ================= AI SCORE =================
+  const aiScore = async (userAns, correctAns) => {
     try {
-      const res = await fetch("/api/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, userAns, correctAns })
-      });
-      const data = await res.json();
-      return data;
+      if (!userAns || userAns.trim().length < 5) return 0;
+
+      const userText = userAns.toLowerCase();
+      const correctText = correctAns.toLowerCase();
+
+      const keywords = correctText.match(/\b[a-z]{4,}\b/g) || [];
+      const uniqueKeywords = [...new Set(keywords)];
+
+      const matched = uniqueKeywords.filter(k => userText.includes(k));
+      const coverage = matched.length / (uniqueKeywords.length || 1);
+
+      const sentenceCount = (userAns.match(/[.!?]/g) || []).length;
+      const lengthFactor = Math.min(1, userAns.split(" ").length / 25);
+
+      if (coverage < 0.15) return 0;
+
+      const score = (coverage * 0.6 + lengthFactor * 0.25 + (sentenceCount > 0 ? 0.15 : 0)) * 10;
+      return Number(score.toFixed(1));
     } catch {
-      return {
-        score: 0,
-        keyPoints: [],
-        feedback: "Evaluation unavailable"
-      };
+      return 0;
     }
   };
 
-  // ================= TRANSLATE =================
-  const translateText = async (text) => {
-    if (language === "en") return text;
-
-    try {
-      const res = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, targetLang: language })
-      });
-      const data = await res.json();
-      return data.translatedText || text;
-    } catch {
-      return text;
-    }
-  };
-
-  // ================= EVALUATE LIST =================
   useEffect(() => {
     const evaluate = async () => {
       const scored = await Promise.all(
-        feedbackList.map(async item => {
-          const ai = await aiEvaluate(item.question, item.userAns, item.correctAns);
-
-          return {
-            ...item,
-            computedRating: ai.score,
-            keyPoints: ai.keyPoints,
-            aiFeedback: ai.feedback
-          };
-        })
+        feedbackList.map(async item => ({
+          ...item,
+          computedRating: await aiScore(item.userAns, item.correctAns),
+          keyPoints: item.correctAns?.split('.').filter(Boolean).slice(0, 3)
+        }))
       );
       setEvaluatedList(scored);
     };
-
     if (feedbackList.length) evaluate();
   }, [feedbackList]);
 
-  // ================= OVERALL =================
   const overallRating = useMemo(() => {
     if (!evaluatedList.length) return 0;
     const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating || 0), 0);
@@ -121,19 +145,9 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Language Selector ===== */}
+      {/* ===== Translator Dropdown Only ===== */}
       <div className="flex justify-end mb-4 print:hidden">
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="border rounded-md p-2 text-sm"
-        >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-          <option value="kn">Kannada</option>
-          <option value="te">Telugu</option>
-          <option value="ta">Tamil</option>
-        </select>
+        <div id="google_translate_element"></div>
       </div>
 
       <h2 className='text-3xl font-bold text-green-600'>Congratulations!</h2>
@@ -147,13 +161,27 @@ const Feedback = ({ params }) => {
             Your overall interview rating: <strong>{overallRating}/10</strong>
           </h2>
 
-          {/* ===== Overall Bar ===== */}
-          <div className="w-full bg-gray-200 rounded-full h-4 mb-6">
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
             <div className="bg-green-500 h-4 rounded-full"
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* ===== Summary ===== */}
+          {/* ===== SCORE BAR GRAPH ===== */}
+          <div className="bg-white border rounded-xl p-4 mb-6">
+            <h3 className="font-semibold mb-3">Score Visualization</h3>
+            <div className="flex items-end gap-3 h-40">
+              {evaluatedList.map((item, i) => (
+                <div key={i} className="flex flex-col items-center flex-1">
+                  <div
+                    className="w-full bg-blue-500 rounded-t-lg"
+                    style={{ height: `${item.computedRating * 10}%` }}
+                  />
+                  <span className="text-xs mt-1">Q{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-3 gap-4 my-6">
             <div className="p-4 border rounded-lg bg-blue-50">
               <h3 className="font-semibold">Performance Level</h3>
@@ -169,22 +197,6 @@ const Feedback = ({ params }) => {
             </div>
           </div>
 
-          {/* ===== Score Chart ===== */}
-          <div className="my-8">
-            <h3 className="font-semibold mb-2">Score Overview</h3>
-            <div className="flex items-end gap-3 h-40 border p-4 rounded-lg">
-              {evaluatedList.map((item, i) => (
-                <div key={i} className="flex flex-col items-center w-full">
-                  <div
-                    className="w-6 bg-blue-500 rounded"
-                    style={{ height: `${item.computedRating * 10}%` }}
-                  />
-                  <span className="text-xs mt-1">Q{i + 1}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {evaluatedList.map((item, index) => {
             const ratingPercent = (item.computedRating / 10) * 100;
 
@@ -196,7 +208,6 @@ const Feedback = ({ params }) => {
 
                 <CollapsibleContent>
                   <div className='flex flex-col gap-2'>
-
                     <h2 className='text-red-500 p-2 border rounded-lg'>
                       <strong>Rating:</strong> {item.computedRating}/10
                     </h2>
@@ -217,14 +228,13 @@ const Feedback = ({ params }) => {
                     <div className='p-2 border rounded-lg bg-yellow-50 text-sm'>
                       <strong>Key Points:</strong>
                       <ul className='list-disc ml-5'>
-                        {item.keyPoints?.map((kp, i) => <li key={i}>{kp}</li>)}
+                        {item.keyPoints.map((kp, i) => <li key={i}>{kp}</li>)}
                       </ul>
                     </div>
 
                     <h2 className='p-2 border rounded-lg bg-blue-50 text-sm'>
-                      <strong>AI Feedback: </strong>{item.aiFeedback}
+                      <strong>Feedback: </strong>{item.feedback}
                     </h2>
-
                   </div>
                 </CollapsibleContent>
               </Collapsible>
