@@ -26,6 +26,7 @@ const Feedback = ({ params }) => {
     loadLanguages();
   }, []);
 
+  // ================= FETCH FEEDBACK =================
   const GetFeedback = async () => {
     const result = await db.select()
       .from(UserAnswer)
@@ -40,10 +41,24 @@ const Feedback = ({ params }) => {
     try {
       const res = await fetch("/api/languages");
       const data = await res.json();
-      setLanguages(data || []);
-      if (data?.length) setLang(data[0].code);
+
+      if (Array.isArray(data) && data.length) {
+        setLanguages(data);
+        setLang(data[0].code);
+      } else {
+        // fallback languages
+        const fallback = [
+          { code: "en", name: "English" },
+          { code: "hi", name: "Hindi" },
+          { code: "kn", name: "Kannada" },
+          { code: "ta", name: "Tamil" },
+        ];
+        setLanguages(fallback);
+        setLang("en");
+      }
     } catch {
-      setLanguages([]);
+      setLanguages([{ code: "en", name: "English" }]);
+      setLang("en");
     }
   };
 
@@ -55,10 +70,13 @@ const Feedback = ({ params }) => {
 
   const saveHistory = (score, interviewDate) => {
     if (!interviewDate) return;
-    const exists = history.find(h => h.date === interviewDate);
+
+    const stored = JSON.parse(localStorage.getItem("interviewHistory") || "[]");
+
+    const exists = stored.find(h => h.date === interviewDate);
     if (exists) return;
 
-    const updated = [...history, { date: interviewDate, score }];
+    const updated = [...stored, { date: interviewDate, score }];
     localStorage.setItem("interviewHistory", JSON.stringify(updated));
     setHistory(updated);
   };
@@ -68,7 +86,7 @@ const Feedback = ({ params }) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     const pad = (n) => n.toString().padStart(2, "0");
-    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} / ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const interviewDate = useMemo(() => {
@@ -77,7 +95,7 @@ const Feedback = ({ params }) => {
     return formatDateTime(raw);
   }, [feedbackList]);
 
-  // ================= SMART AI SCORING =================
+  // ================= SMART SCORING =================
   const aiScore = async (userAns, correctAns) => {
     try {
       if (!userAns || userAns.trim().length < 5) return 0;
@@ -85,22 +103,18 @@ const Feedback = ({ params }) => {
       const userText = userAns.toLowerCase();
       const correctText = correctAns.toLowerCase();
 
-      // extract keywords (basic noun-like words)
       const keywords = correctText.match(/\b[a-z]{4,}\b/g) || [];
       const uniqueKeywords = [...new Set(keywords)];
 
       const matched = uniqueKeywords.filter(k => userText.includes(k));
       const coverage = matched.length / (uniqueKeywords.length || 1);
 
-      // grammar heuristic (sentence structure)
       const sentenceCount = (userAns.match(/[.!?]/g) || []).length;
       const lengthFactor = Math.min(1, userAns.split(" ").length / 25);
 
-      // quality check
-      if (coverage < 0.15) return 0; // no key points → zero
+      if (coverage < 0.15) return 0;
 
       const score = (coverage * 0.6 + lengthFactor * 0.25 + (sentenceCount > 0 ? 0.15 : 0)) * 10;
-
       return Number(score.toFixed(1));
     } catch {
       return 0;
@@ -114,7 +128,7 @@ const Feedback = ({ params }) => {
         feedbackList.map(async item => ({
           ...item,
           computedRating: await aiScore(item.userAns, item.correctAns),
-          keyPoints: item.correctAns?.split('.').slice(0, 3)
+          keyPoints: item.correctAns?.split('.').filter(Boolean).slice(0, 3)
         }))
       );
       setEvaluatedList(scored);
@@ -125,39 +139,43 @@ const Feedback = ({ params }) => {
   // ================= OVERALL =================
   const overallRating = useMemo(() => {
     if (!evaluatedList.length) return 0;
-
     const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating || 0), 0);
-    const avg = Number((total / evaluatedList.length).toFixed(1));
+    return Number((total / evaluatedList.length).toFixed(1));
+  }, [evaluatedList]);
 
-    saveHistory(avg, interviewDate);
-    return avg;
-  }, [evaluatedList, interviewDate]);
+  // ✅ SAVE HISTORY AFTER RATING READY
+  useEffect(() => {
+    if (overallRating && interviewDate) {
+      saveHistory(overallRating, interviewDate);
+    }
+  }, [overallRating, interviewDate]);
 
   const performanceLevel =
     overallRating >= 8 ? "Expert" :
     overallRating >= 5 ? "Intermediate" : "Beginner";
 
-  // ================= APPLY TRANSLATION =================
+  // ================= TRANSLATION =================
   const applyTranslation = async () => {
     if (!lang) return;
 
-    try {
-      const nodes = document.querySelectorAll("[data-translate]");
-      for (const node of nodes) {
-        const text = node.innerText;
-        if (!text) continue;
+    const nodes = document.querySelectorAll("[data-translate]");
 
+    for (const node of nodes) {
+      const text = node.innerText;
+      if (!text.trim()) continue;
+
+      try {
         const res = await fetch("/api/translate", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, targetLang: lang }),
         });
+
         if (!res.ok) continue;
 
         const data = await res.json();
-        if (data.translatedText) node.innerText = data.translatedText;
-      }
-    } catch {
-      // silent fallback
+        if (data?.translatedText) node.innerText = data.translatedText;
+      } catch {}
     }
   };
 
@@ -166,7 +184,7 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Dynamic Language Selector ===== */}
+      {/* ===== LANGUAGE SELECTOR ===== */}
       <div className="flex justify-end gap-2 mb-4 print:hidden">
         <select
           className="border rounded px-2 py-1"
@@ -179,7 +197,7 @@ const Feedback = ({ params }) => {
         </select>
 
         <Button variant="outline" onClick={applyTranslation}>
-          Apply
+          Translate
         </Button>
       </div>
 
@@ -199,7 +217,7 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* ===== Summary ===== */}
+          {/* SUMMARY */}
           <div className="grid md:grid-cols-3 gap-4 my-6">
             <div className="p-4 border rounded-lg bg-blue-50">
               <h3 className="font-semibold">Performance Level</h3>
@@ -215,7 +233,7 @@ const Feedback = ({ params }) => {
             </div>
           </div>
 
-          {/* ===== History ===== */}
+          {/* HISTORY */}
           <div className="my-6">
             <h3 className="font-semibold mb-2">Progress History</h3>
             <ul className="text-sm space-y-1">
