@@ -20,28 +20,33 @@ const Feedback = ({ params }) => {
   useEffect(() => {
     GetFeedback();
     loadGoogleTranslate();
-    hideGoogleUI();
+    removeTranslateBanner();
   }, []);
 
-  // ================= FORCE REMOVE GOOGLE TOP BAR =================
-  const hideGoogleUI = () => {
+  // ================= REMOVE GOOGLE TOP BANNER COMPLETELY =================
+  const removeTranslateBanner = () => {
+
     const style = document.createElement("style");
     style.innerHTML = `
-      .goog-te-banner-frame.skiptranslate { display: none !important; }
-      body { top: 0px !important; }
-      iframe.goog-te-banner-frame { display:none !important; }
-      .goog-logo-link { display:none !important; }
-      .goog-te-gadget span { display:none !important; }
-      .goog-te-gadget { font-size:0px !important; }
+      iframe.goog-te-banner-frame { display: none !important; }
+      .goog-te-banner-frame { display:none !important; }
+      body { top: 0px !important; position: static !important; }
+      html { top: 0px !important; }
+      .skiptranslate { display:none !important; }
     `;
     document.head.appendChild(style);
 
-    const observer = new MutationObserver(() => {
-      const banner = document.querySelector('iframe.goog-te-banner-frame');
-      if (banner) banner.remove();
-      document.body.style.top = "0px";
-    });
+    const removeIframe = () => {
+      const iframe = document.querySelector("iframe.goog-te-banner-frame");
+      if (iframe) iframe.remove();
 
+      document.body.style.top = "0px";
+      document.body.style.position = "static";
+    };
+
+    removeIframe();
+
+    const observer = new MutationObserver(removeIframe);
     observer.observe(document.body, { childList: true, subtree: true });
   };
 
@@ -140,7 +145,7 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Translator ===== */}
+      {/* ===== Translator Dropdown Only ===== */}
       <div className="flex justify-end mb-4 print:hidden">
         <div id="google_translate_element"></div>
       </div>
@@ -161,14 +166,14 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* ================= BAR GRAPH ================= */}
+          {/* ===== SCORE BAR GRAPH ===== */}
           <div className="bg-white border rounded-xl p-4 mb-6">
             <h3 className="font-semibold mb-3">Score Visualization</h3>
             <div className="flex items-end gap-3 h-40">
               {evaluatedList.map((item, i) => (
                 <div key={i} className="flex flex-col items-center flex-1">
                   <div
-                    className="w-full bg-blue-500 rounded-t-lg transition-all"
+                    className="w-full bg-blue-500 rounded-t-lg"
                     style={{ height: `${item.computedRating * 10}%` }}
                   />
                   <span className="text-xs mt-1">Q{i + 1}</span>
