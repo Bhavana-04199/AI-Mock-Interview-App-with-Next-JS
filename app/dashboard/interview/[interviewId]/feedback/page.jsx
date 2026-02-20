@@ -20,26 +20,25 @@ const Feedback = ({ params }) => {
   useEffect(() => {
     GetFeedback();
     loadGoogleTranslate();
-    hideGoogleUI();
+    removeGoogleBannerSpace();
   }, []);
 
-  // ================= FORCE REMOVE GOOGLE TOP BAR =================
-  const hideGoogleUI = () => {
+  // ================= REMOVE GOOGLE TOP SPACE =================
+  const removeGoogleBannerSpace = () => {
     const style = document.createElement("style");
     style.innerHTML = `
+      body { top: 0px !important; position: static !important; }
       .goog-te-banner-frame.skiptranslate { display: none !important; }
-      body { top: 0px !important; }
-      iframe.goog-te-banner-frame { display:none !important; }
-      .goog-logo-link { display:none !important; }
-      .goog-te-gadget span { display:none !important; }
-      .goog-te-gadget { font-size:0px !important; }
+      iframe.goog-te-banner-frame { display: none !important; }
+      .skiptranslate { display: none !important; }
+      #goog-gt-tt { display:none !important; }
     `;
     document.head.appendChild(style);
 
     const observer = new MutationObserver(() => {
+      document.body.style.top = "0px";
       const banner = document.querySelector('iframe.goog-te-banner-frame');
       if (banner) banner.remove();
-      document.body.style.top = "0px";
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -60,6 +59,21 @@ const Feedback = ({ params }) => {
     script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
     script.async = true;
     document.body.appendChild(script);
+  };
+
+  // ===== Reset to original language =====
+  const resetTranslation = () => {
+    const select = document.querySelector(".goog-te-combo");
+    if (select) {
+      select.value = "en";
+      select.dispatchEvent(new Event("change"));
+    }
+  };
+
+  // ===== Close translation =====
+  const closeTranslation = () => {
+    document.cookie = "googtrans=/en/en;path=/;";
+    window.location.reload();
   };
 
   const GetFeedback = async () => {
@@ -140,9 +154,23 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Translator ===== */}
-      <div className="flex justify-end mb-4 print:hidden">
+      {/* ===== Translator Controls ===== */}
+      <div className="flex justify-end items-center gap-2 mb-4 print:hidden">
         <div id="google_translate_element"></div>
+
+        <button
+          onClick={resetTranslation}
+          className="text-xs border px-2 py-1 rounded hover:bg-gray-100"
+        >
+          Show Original
+        </button>
+
+        <button
+          onClick={closeTranslation}
+          className="text-xs border px-2 py-1 rounded hover:bg-gray-100"
+        >
+          ✕
+        </button>
       </div>
 
       <h2 className='text-3xl font-bold text-green-600'>Congratulations!</h2>
@@ -161,14 +189,14 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* ================= BAR GRAPH ================= */}
+          {/* ===== BAR GRAPH ===== */}
           <div className="bg-white border rounded-xl p-4 mb-6">
             <h3 className="font-semibold mb-3">Score Visualization</h3>
             <div className="flex items-end gap-3 h-40">
               {evaluatedList.map((item, i) => (
                 <div key={i} className="flex flex-col items-center flex-1">
                   <div
-                    className="w-full bg-blue-500 rounded-t-lg transition-all"
+                    className="w-full bg-blue-500 rounded-t-lg"
                     style={{ height: `${item.computedRating * 10}%` }}
                   />
                   <span className="text-xs mt-1">Q{i + 1}</span>
