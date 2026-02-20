@@ -25,7 +25,6 @@ const Feedback = ({ params }) => {
 
   // ================= FORCE REMOVE GOOGLE TOP BAR =================
   const hideGoogleUI = () => {
-
     const style = document.createElement("style");
     style.innerHTML = `
       .goog-te-banner-frame.skiptranslate { display: none !important; }
@@ -37,11 +36,9 @@ const Feedback = ({ params }) => {
     `;
     document.head.appendChild(style);
 
-    // 🔥 Mutation observer to remove banner if injected again
     const observer = new MutationObserver(() => {
       const banner = document.querySelector('iframe.goog-te-banner-frame');
       if (banner) banner.remove();
-
       document.body.style.top = "0px";
     });
 
@@ -54,17 +51,13 @@ const Feedback = ({ params }) => {
 
     window.googleTranslateElementInit = () => {
       new window.google.translate.TranslateElement(
-        {
-          pageLanguage: "en",
-          autoDisplay: false
-        },
+        { pageLanguage: "en", autoDisplay: false },
         "google_translate_element"
       );
     };
 
     const script = document.createElement("script");
-    script.src =
-      "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
     script.async = true;
     document.body.appendChild(script);
   };
@@ -78,13 +71,10 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // ================= DATE FORMAT =================
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "—";
-
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "—";
-
     const pad = (n) => n.toString().padStart(2, "0");
     return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
@@ -121,7 +111,6 @@ const Feedback = ({ params }) => {
     }
   };
 
-  // ================= EVALUATION =================
   useEffect(() => {
     const evaluate = async () => {
       const scored = await Promise.all(
@@ -136,7 +125,6 @@ const Feedback = ({ params }) => {
     if (feedbackList.length) evaluate();
   }, [feedbackList]);
 
-  // ================= OVERALL =================
   const overallRating = useMemo(() => {
     if (!evaluatedList.length) return 0;
     const total = evaluatedList.reduce((sum, i) => sum + Number(i.computedRating || 0), 0);
@@ -171,6 +159,22 @@ const Feedback = ({ params }) => {
           <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
             <div className="bg-green-500 h-4 rounded-full"
               style={{ width: `${overallRating * 10}%` }} />
+          </div>
+
+          {/* ================= BAR GRAPH ================= */}
+          <div className="bg-white border rounded-xl p-4 mb-6">
+            <h3 className="font-semibold mb-3">Score Visualization</h3>
+            <div className="flex items-end gap-3 h-40">
+              {evaluatedList.map((item, i) => (
+                <div key={i} className="flex flex-col items-center flex-1">
+                  <div
+                    className="w-full bg-blue-500 rounded-t-lg transition-all"
+                    style={{ height: `${item.computedRating * 10}%` }}
+                  />
+                  <span className="text-xs mt-1">Q{i + 1}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-4 my-6">
