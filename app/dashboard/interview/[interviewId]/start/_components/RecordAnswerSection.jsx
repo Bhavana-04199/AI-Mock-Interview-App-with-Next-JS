@@ -18,7 +18,7 @@ const RecordAnswerSection = ({
   interviewData,
 }) => {
   const [userAnswer, setUserAnswer] = useState("");
-  const [finalAnswer, setFinalAnswer] = useState(""); // ✅ to display after stop
+  const [finalAnswer, setFinalAnswer] = useState("");
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
 
@@ -35,6 +35,13 @@ const RecordAnswerSection = ({
     useLegacyResults: false,
   });
 
+  // ✅ RESET when question changes
+  useEffect(() => {
+    setUserAnswer("");
+    setFinalAnswer("");
+    setResults([]);
+  }, [activeQuestionIndex]);
+
   // ✅ append speech text
   useEffect(() => {
     results.map((result) =>
@@ -45,7 +52,7 @@ const RecordAnswerSection = ({
   // ✅ save after recording stops
   useEffect(() => {
     if (!isRecording && userAnswer.length > 10) {
-      setFinalAnswer(userAnswer); // show final text
+      setFinalAnswer(userAnswer);
       UpdateUserAnswer();
       toast.success("Answer recorded successfully ✅");
     }
@@ -56,12 +63,11 @@ const RecordAnswerSection = ({
       stopSpeechToText();
     } else {
       startSpeechToText();
-      setFinalAnswer(""); // reset when new recording starts
+      setFinalAnswer("");
     }
   };
 
   const UpdateUserAnswer = async () => {
-    console.log(userAnswer, "########");
     setLoading(true);
 
     const feedbackPrompt =
@@ -136,7 +142,7 @@ const RecordAnswerSection = ({
         )}
       </Button>
 
-      {/* ✅ TEXT INPUT (User can type also) */}
+      {/* Textarea */}
       <textarea
         value={userAnswer}
         onChange={(e) => setUserAnswer(e.target.value)}
@@ -144,7 +150,7 @@ const RecordAnswerSection = ({
         className="w-full max-w-2xl border rounded-lg p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
       />
 
-      {/* ✅ SHOW FINAL ANSWER AFTER STOP */}
+      {/* Final Answer */}
       {finalAnswer && !isRecording && (
         <div className="w-full max-w-2xl mt-4 p-4 border rounded-lg bg-green-50">
           <h3 className="font-semibold text-green-700 mb-1">
