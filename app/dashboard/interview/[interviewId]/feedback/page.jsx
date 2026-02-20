@@ -15,18 +15,31 @@ import { useRouter } from 'next/navigation';
 const Feedback = ({ params }) => {
   const [feedbackList, setFeedbackList] = useState([]);
   const [evaluatedList, setEvaluatedList] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [languages, setLanguages] = useState([]);
-  const [lang, setLang] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     GetFeedback();
-    loadHistory();
-    loadLanguages();
+    loadGoogleTranslate();
   }, []);
 
-  // ================= FETCH FEEDBACK =================
+  // ================= GOOGLE TRANSLATE =================
+  const loadGoogleTranslate = () => {
+    if (window.googleTranslateElementInit) return;
+
+    window.googleTranslateElementInit = () => {
+      new window.google.translate.TranslateElement(
+        { pageLanguage: "en" },
+        "google_translate_element"
+      );
+    };
+
+    const script = document.createElement("script");
+    script.src =
+      "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.async = true;
+    document.body.appendChild(script);
+  };
+
   const GetFeedback = async () => {
     const result = await db.select()
       .from(UserAnswer)
@@ -36,57 +49,12 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // ================= LOAD LANGUAGES =================
-  const loadLanguages = async () => {
-    try {
-      const res = await fetch("/api/languages");
-      const data = await res.json();
-
-      if (Array.isArray(data) && data.length) {
-        setLanguages(data);
-        setLang(data[0].code);
-      } else {
-        // fallback languages
-        const fallback = [
-          { code: "en", name: "English" },
-          { code: "hi", name: "Hindi" },
-          { code: "kn", name: "Kannada" },
-          { code: "ta", name: "Tamil" },
-        ];
-        setLanguages(fallback);
-        setLang("en");
-      }
-    } catch {
-      setLanguages([{ code: "en", name: "English" }]);
-      setLang("en");
-    }
-  };
-
-  // ================= HISTORY =================
-  const loadHistory = () => {
-    const data = JSON.parse(localStorage.getItem("interviewHistory") || "[]");
-    setHistory(data);
-  };
-
-  const saveHistory = (score, interviewDate) => {
-    if (!interviewDate) return;
-
-    const stored = JSON.parse(localStorage.getItem("interviewHistory") || "[]");
-
-    const exists = stored.find(h => h.date === interviewDate);
-    if (exists) return;
-
-    const updated = [...stored, { date: interviewDate, score }];
-    localStorage.setItem("interviewHistory", JSON.stringify(updated));
-    setHistory(updated);
-  };
-
   // ================= DATE FORMAT =================
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     const pad = (n) => n.toString().padStart(2, "0");
-    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} / ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const interviewDate = useMemo(() => {
@@ -95,7 +63,7 @@ const Feedback = ({ params }) => {
     return formatDateTime(raw);
   }, [feedbackList]);
 
-  // ================= SMART SCORING =================
+  // ================= SMART AI SCORING =================
   const aiScore = async (userAns, correctAns) => {
     try {
       if (!userAns || userAns.trim().length < 5) return 0;
@@ -143,72 +111,28 @@ const Feedback = ({ params }) => {
     return Number((total / evaluatedList.length).toFixed(1));
   }, [evaluatedList]);
 
-  // ✅ SAVE HISTORY AFTER RATING READY
-  useEffect(() => {
-    if (overallRating && interviewDate) {
-      saveHistory(overallRating, interviewDate);
-    }
-  }, [overallRating, interviewDate]);
-
   const performanceLevel =
     overallRating >= 8 ? "Expert" :
     overallRating >= 5 ? "Intermediate" : "Beginner";
-
-  // ================= TRANSLATION =================
-  const applyTranslation = async () => {
-    if (!lang) return;
-
-    const nodes = document.querySelectorAll("[data-translate]");
-
-    for (const node of nodes) {
-      const text = node.innerText;
-      if (!text.trim()) continue;
-
-      try {
-        const res = await fetch("/api/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, targetLang: lang }),
-        });
-
-        if (!res.ok) continue;
-
-        const data = await res.json();
-        if (data?.translatedText) node.innerText = data.translatedText;
-      } catch {}
-    }
-  };
 
   const downloadReport = () => window.print();
 
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== LANGUAGE SELECTOR ===== */}
-      <div className="flex justify-end gap-2 mb-4 print:hidden">
-        <select
-          className="border rounded px-2 py-1"
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
-        >
-          {languages.map(l => (
-            <option key={l.code} value={l.code}>{l.name}</option>
-          ))}
-        </select>
-
-        <Button variant="outline" onClick={applyTranslation}>
-          Translate
-        </Button>
+      {/* ===== Google Translate ===== */}
+      <div className="flex justify-end mb-4 print:hidden">
+        <div id="google_translate_element"></div>
       </div>
 
-      <h2 data-translate className='text-3xl font-bold text-green-600'>Congratulations!</h2>
-      <h2 data-translate className='font-bold text-2xl'>Here is your interview feedback</h2>
+      <h2 className='text-3xl font-bold text-green-600'>Congratulations!</h2>
+      <h2 className='font-bold text-2xl'>Here is your interview feedback</h2>
 
       {evaluatedList.length === 0 ?
         <h2 className='font-bold text-lg text-green-500'>No interview Feedback</h2>
         :
         <>
-          <h2 data-translate className='text-primary text-lg my-2'>
+          <h2 className='text-primary text-lg my-2'>
             Your overall interview rating: <strong>{overallRating}/10</strong>
           </h2>
 
@@ -217,7 +141,7 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* SUMMARY */}
+          {/* ===== Summary ===== */}
           <div className="grid md:grid-cols-3 gap-4 my-6">
             <div className="p-4 border rounded-lg bg-blue-50">
               <h3 className="font-semibold">Performance Level</h3>
@@ -231,16 +155,6 @@ const Feedback = ({ params }) => {
               <h3 className="font-semibold">Interview Date</h3>
               <p>{interviewDate}</p>
             </div>
-          </div>
-
-          {/* HISTORY */}
-          <div className="my-6">
-            <h3 className="font-semibold mb-2">Progress History</h3>
-            <ul className="text-sm space-y-1">
-              {history.map((h, i) => (
-                <li key={i}>{h.date} — {h.score}/10</li>
-              ))}
-            </ul>
           </div>
 
           {evaluatedList.map((item, index) => {
