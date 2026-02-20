@@ -20,7 +20,20 @@ const Feedback = ({ params }) => {
   useEffect(() => {
     GetFeedback();
     loadGoogleTranslate();
+    removeTopBanner();
   }, []);
+
+  // ================= REMOVE GOOGLE TOP BAR =================
+  const removeTopBanner = () => {
+    const style = document.createElement("style");
+    style.innerHTML = `
+      .goog-te-banner-frame.skiptranslate { display: none !important; }
+      body { top: 0px !important; }
+      .goog-logo-link { display:none !important; }
+      .goog-te-gadget span { display:none !important; }
+    `;
+    document.head.appendChild(style);
+  };
 
   // ================= GOOGLE TRANSLATE =================
   const loadGoogleTranslate = () => {
@@ -28,7 +41,10 @@ const Feedback = ({ params }) => {
 
     window.googleTranslateElementInit = () => {
       new window.google.translate.TranslateElement(
-        { pageLanguage: "en" },
+        {
+          pageLanguage: "en",
+          autoDisplay: false
+        },
         "google_translate_element"
       );
     };
@@ -49,17 +65,22 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // ================= DATE FORMAT =================
+  // ================= DATE FORMAT (DB DATE ONLY) =================
   const formatDateTime = (dateStr) => {
-    if (!dateStr) return "";
+    if (!dateStr) return "—";
+
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+
     const pad = (n) => n.toString().padStart(2, "0");
-    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} / ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const interviewDate = useMemo(() => {
-    if (!feedbackList.length) return "";
-    const raw = feedbackList[0]?.createdAt || feedbackList[0]?.date;
+    if (!feedbackList.length) return "—";
+
+    // ✅ strictly use DB date
+    const raw = feedbackList[0]?.createdAt || feedbackList[0]?.updatedAt || feedbackList[0]?.date;
     return formatDateTime(raw);
   }, [feedbackList]);
 
@@ -120,7 +141,7 @@ const Feedback = ({ params }) => {
   return (
     <div className='p-10 print:p-6'>
 
-      {/* ===== Google Translate ===== */}
+      {/* ===== Translator ===== */}
       <div className="flex justify-end mb-4 print:hidden">
         <div id="google_translate_element"></div>
       </div>
