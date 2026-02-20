@@ -2,9 +2,8 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
-import Webcam from "react-webcam";
 import useSpeechToText from "react-hook-speech-to-text";
-import { Mic, StopCircle } from "lucide-react";
+import { Mic, StopCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import { chatSession } from "@/utils/GeminiAIModal";
 import { db } from "@/utils/db";
@@ -24,7 +23,6 @@ const RecordAnswerSection = ({
 
   const {
     error,
-    interimResult,
     isRecording,
     results,
     startSpeechToText,
@@ -35,79 +33,82 @@ const RecordAnswerSection = ({
     useLegacyResults: false,
   });
 
-  // ✅ RESET when question changes
+  // 🔹 Reset when question changes
   useEffect(() => {
     setUserAnswer("");
     setFinalAnswer("");
     setResults([]);
   }, [activeQuestionIndex]);
 
-  // ✅ append speech text
+  // 🔹 Append speech text
   useEffect(() => {
-    results.map((result) =>
-      setUserAnswer((prevAns) => prevAns + result?.transcript + " ")
+    results.forEach((result) =>
+      setUserAnswer((prev) => prev + result.transcript + " ")
     );
   }, [results]);
 
-  // ✅ save after recording stops
-  useEffect(() => {
-    if (!isRecording && userAnswer.length > 10) {
-      setFinalAnswer(userAnswer);
-      UpdateUserAnswer();
-      toast.success("Answer recorded successfully ✅");
-    }
-  }, [userAnswer]);
-
-  const StartStopRecording = async () => {
+  const StartStopRecording = () => {
     if (isRecording) {
       stopSpeechToText();
+      setFinalAnswer(userAnswer);
+      toast.success("Recording completed 🎤");
     } else {
       startSpeechToText();
       setFinalAnswer("");
     }
   };
 
-  const UpdateUserAnswer = async () => {
-    setLoading(true);
-
-    const feedbackPrompt =
-      "Question:" +
-      mockInterviewQuestion[activeQuestionIndex]?.question +
-      ", User Answer:" +
-      userAnswer +
-      ",Depends on question and user answer for given interview question " +
-      " please give use rating for answer and feedback as area of improvement if any" +
-      " in just 3 to 5 lines to improve it in JSON format with rating field and feedback field";
-
-    const result = await chatSession.sendMessage(feedbackPrompt);
-
-    const mockJsonResp = result.response
-      .text()
-      .replace("```json", "")
-      .replace("```", "");
-
-    const JsonfeedbackResp = JSON.parse(mockJsonResp);
-
-    const resp = await db.insert(UserAnswer).values({
-      mockIdRef: interviewData?.mockId,
-      question: mockInterviewQuestion[activeQuestionIndex]?.question,
-      correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
-      userAns: userAnswer,
-      feedback: JsonfeedbackResp?.feedback,
-      rating: JsonfeedbackResp?.rating,
-      userEmail: user?.primaryEmailAddress?.emailAddress,
-      createdAt: moment().format("DD-MM-YYYY"),
-    });
-
-    if (resp) {
-      setUserAnswer("");
-      setResults([]);
+  // ================= SAVE ANSWER =================
+  const SaveAnswer = async () => {
+    if (!userAnswer || userAnswer.trim().length < 5) {
+      toast.error("Please record or type an answer first");
+      return;
     }
 
-    setLoading(false);
+    try {
+      setLoading(true);
+
+      const feedbackPrompt =
+        "Question:" +
+        mockInterviewQuestion[activeQuestionIndex]?.question +
+        ", User Answer:" +
+        userAnswer +
+        ",Depends on question and user answer for given interview question " +
+        " please give rating and feedback in JSON with rating and feedback fields";
+
+      const result = await chatSession.sendMessage(feedbackPrompt);
+
+      const mockJsonResp = result.response
+        .text()
+        .replace("```json", "")
+        .replace("```", "");
+
+      const JsonfeedbackResp = JSON.parse(mockJsonResp);
+
+      await db.insert(UserAnswer).values({
+        mockIdRef: interviewData?.mockId,
+        question: mockInterviewQuestion[activeQuestionIndex]?.question,
+        correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
+        userAns: userAnswer,
+        feedback: JsonfeedbackResp?.feedback,
+        rating: JsonfeedbackResp?.rating,
+        userEmail: user?.primaryEmailAddress?.emailAddress,
+        createdAt: moment().format("DD-MM-YYYY"),
+      });
+
+      toast.success("Answer saved successfully ✅");
+      setFinalAnswer(userAnswer);
+      setUserAnswer("");
+      setResults([]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save answer");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (error) return <p>Web Speech API is not available in this browser 🤷‍</p>;
+  if (error) return <p>Web Speech API is not available 🤷‍♂️</p>;
 
   return (
     <div className="flex justify-center items-center flex-col">
@@ -126,14 +127,13 @@ const RecordAnswerSection = ({
 
       {/* Record Button */}
       <Button
-        disabled={loading}
         variant="outline"
-        className="my-6"
+        className="my-4"
         onClick={StartStopRecording}
       >
         {isRecording ? (
-          <h2 className="text-red-600 items-center animate-pulse flex gap-2">
-            <StopCircle /> Stop Recording...
+          <h2 className="text-red-600 flex gap-2 items-center">
+            <StopCircle /> Stop Recording
           </h2>
         ) : (
           <h2 className="text-primary flex gap-2 items-center">
@@ -146,15 +146,25 @@ const RecordAnswerSection = ({
       <textarea
         value={userAnswer}
         onChange={(e) => setUserAnswer(e.target.value)}
-        placeholder="Your answer will appear here... you can also edit or type."
+        placeholder="Type or record your answer..."
         className="w-full max-w-2xl border rounded-lg p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
       />
 
+      {/* Save Button */}
+      <Button
+        onClick={SaveAnswer}
+        disabled={loading}
+        className="mt-4 flex gap-2 items-center"
+      >
+        <Save size={16} />
+        {loading ? "Saving..." : "Save Answer"}
+      </Button>
+
       {/* Final Answer */}
-      {finalAnswer && !isRecording && (
+      {finalAnswer && (
         <div className="w-full max-w-2xl mt-4 p-4 border rounded-lg bg-green-50">
           <h3 className="font-semibold text-green-700 mb-1">
-            Final Recorded Answer
+            Saved Answer
           </h3>
           <p className="text-sm text-gray-700 whitespace-pre-wrap">
             {finalAnswer}
