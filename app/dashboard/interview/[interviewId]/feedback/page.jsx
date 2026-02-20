@@ -20,19 +20,32 @@ const Feedback = ({ params }) => {
   useEffect(() => {
     GetFeedback();
     loadGoogleTranslate();
-    removeTopBanner();
+    hideGoogleUI();
   }, []);
 
-  // ================= REMOVE GOOGLE TOP BAR =================
-  const removeTopBanner = () => {
+  // ================= FORCE REMOVE GOOGLE TOP BAR =================
+  const hideGoogleUI = () => {
+
     const style = document.createElement("style");
     style.innerHTML = `
       .goog-te-banner-frame.skiptranslate { display: none !important; }
       body { top: 0px !important; }
+      iframe.goog-te-banner-frame { display:none !important; }
       .goog-logo-link { display:none !important; }
       .goog-te-gadget span { display:none !important; }
+      .goog-te-gadget { font-size:0px !important; }
     `;
     document.head.appendChild(style);
+
+    // 🔥 Mutation observer to remove banner if injected again
+    const observer = new MutationObserver(() => {
+      const banner = document.querySelector('iframe.goog-te-banner-frame');
+      if (banner) banner.remove();
+
+      document.body.style.top = "0px";
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
   };
 
   // ================= GOOGLE TRANSLATE =================
@@ -65,7 +78,7 @@ const Feedback = ({ params }) => {
     setFeedbackList(result);
   };
 
-  // ================= DATE FORMAT (DB DATE ONLY) =================
+  // ================= DATE FORMAT =================
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "—";
 
@@ -78,13 +91,11 @@ const Feedback = ({ params }) => {
 
   const interviewDate = useMemo(() => {
     if (!feedbackList.length) return "—";
-
-    // ✅ strictly use DB date
     const raw = feedbackList[0]?.createdAt || feedbackList[0]?.updatedAt || feedbackList[0]?.date;
     return formatDateTime(raw);
   }, [feedbackList]);
 
-  // ================= SMART AI SCORING =================
+  // ================= AI SCORE =================
   const aiScore = async (userAns, correctAns) => {
     try {
       if (!userAns || userAns.trim().length < 5) return 0;
@@ -162,7 +173,6 @@ const Feedback = ({ params }) => {
               style={{ width: `${overallRating * 10}%` }} />
           </div>
 
-          {/* ===== Summary ===== */}
           <div className="grid md:grid-cols-3 gap-4 my-6">
             <div className="p-4 border rounded-lg bg-blue-50">
               <h3 className="font-semibold">Performance Level</h3>
