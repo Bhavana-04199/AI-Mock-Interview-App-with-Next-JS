@@ -66,7 +66,7 @@
     }
   }
 
-/* Animated gradient background */
+/* Animated Gradient Background */
 .animate-gradient {
   background-size: 400% 400%;
   animation: gradientMove 12s ease infinite;
@@ -84,14 +84,11 @@
   }
 }
 
-/* Floating circles */
-
+/* Floating Animation */
 .circle {
   position: absolute;
   display: block;
-  width: 120px;
-  height: 120px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.08);
   animation: float 25s linear infinite;
   bottom: -150px;
   border-radius: 50%;
@@ -101,7 +98,6 @@
   left: 25%;
   width: 80px;
   height: 80px;
-  animation-delay: 0s;
 }
 
 .circle:nth-child(2) {
@@ -123,7 +119,6 @@
   left: 40%;
   width: 200px;
   height: 200px;
-  animation-delay: 0s;
   animation-duration: 18s;
 }
 
