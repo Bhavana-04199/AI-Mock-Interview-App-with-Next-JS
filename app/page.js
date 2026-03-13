@@ -1,15 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import AIInterviewIllustration from "./components/AIInterviewIllustration";
 
 export default function Home() {
   return (
-    <div className="hero-container">
+    <main className="hero">
 
-      {/* Animated Gradient Background */}
+      {/* Animated Background */}
       <div className="gradient-bg"></div>
 
-      {/* Animated Particles */}
+      {/* Floating Particles */}
       <div className="particles">
         <span></span>
         <span></span>
@@ -18,48 +18,32 @@ export default function Home() {
         <span></span>
       </div>
 
-      {/* AI Interview Illustration */}
-      <div className="ai-illustration">
-
-        {/* Human */}
-        <div className="human">
-          <div className="head"></div>
-          <div className="body"></div>
-        </div>
-
-        {/* Robot */}
-        <div className="robot">
-          <div className="robot-head">
-            <div className="eye"></div>
-            <div className="eye"></div>
-          </div>
-          <div className="robot-body"></div>
-        </div>
-
-        {/* Table */}
-        <div className="table"></div>
-
-      </div>
-
       {/* Content */}
       <div className="hero-content">
 
-        <h1 className="title">
+        <h1 className="hero-title">
           Virtual AI Interview
         </h1>
 
-        <p className="subtitle">
-          Practice real interviews with AI-powered questions and instant feedback
+        <p className="hero-subtitle">
+          Practice interviews with an AI-powered system and
+          improve your confidence before real job interviews.
         </p>
 
-        <Button
-          className="start-btn"
+        <button
+          className="hero-btn"
           onClick={() => (window.location.href = "/dashboard")}
         >
-          Start Interview
-        </Button>
+          Get Started
+        </button>
+
+        {/* Illustration */}
+        <div className="hero-illustration">
+          <AIInterviewIllustration />
+        </div>
 
       </div>
-    </div>
+
+    </main>
   );
 }
