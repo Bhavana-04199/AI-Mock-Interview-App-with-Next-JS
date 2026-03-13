@@ -6,20 +6,25 @@ export default function Home() {
   return (
     <div className="relative flex items-center justify-center h-screen overflow-hidden">
 
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-900 via-black to-purple-900 animate-gradient"></div>
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/images/ai-interview-animated.svg')",
+        }}
+      />
+
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/70"></div>
 
       {/* Floating Animation */}
-      <div className="absolute inset-0 overflow-hidden">
-        <span className="circle"></span>
-        <span className="circle"></span>
-        <span className="circle"></span>
-        <span className="circle"></span>
-        <span className="circle"></span>
+      <div className="absolute inset-0">
+        <span className="particle"></span>
+        <span className="particle"></span>
+        <span className="particle"></span>
+        <span className="particle"></span>
+        <span className="particle"></span>
       </div>
-
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/40"></div>
 
       {/* Content */}
       <div className="relative z-10 text-center text-white px-6 max-w-xl">
