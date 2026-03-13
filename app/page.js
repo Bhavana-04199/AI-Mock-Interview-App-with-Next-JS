@@ -1,51 +1,23 @@
 "use client";
 
-import Image from "next/image";
 import NeuralBackground from "./components/ui/NeuralBackground";
 import TypingText from "./components/ui/TypingText";
 
 export default function Home() {
   return (
-    <main className="main-container">
+    <main>
 
-      {/* Animated Background */}
       <NeuralBackground />
 
-      {/* Hero Card */}
-      <div className="hero">
+      <h1>Virtual AI Interview</h1>
 
-        {/* Logo */}
-        <div className="logo-container">
-          <Image
-            src="public/logo.svg"
-            alt="AI Interview Logo"
-            width={80}
-            height={80}
-          />
-        </div>
+      <TypingText />
 
-        <h1 className="title">
-          Virtual AI Interview
-        </h1>
-
-        <p className="subtitle">
-          Practice interviews with an AI powered system
-        </p>
-
-        {/* AI Question */}
-        <div className="ai-question">
-          <TypingText />
-        </div>
-
-        {/* Start Button */}
-        <button
-          className="start-btn"
-          onClick={() => (window.location.href = "/dashboard")}
-        >
-          Start Interview
-        </button>
-
-      </div>
+      <button
+        onClick={() => (window.location.href = "/dashboard")}
+      >
+        Start Interview
+      </button>
 
     </main>
   );
