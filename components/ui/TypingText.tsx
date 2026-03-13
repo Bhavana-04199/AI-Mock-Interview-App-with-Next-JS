@@ -1,40 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const questions = [
-  "Tell me about yourself...",
-  "Why should we hire you?",
-  "What are your strengths?",
-  "Describe a challenging project you handled."
-];
+import { useState, useEffect } from "react";
 
 export default function TypingText() {
 
-  const [text,setText] = useState("");
-  const [index,setIndex] = useState(0);
-  const [char,setChar] = useState(0);
+  const questions = [
+    "Tell me about yourself",
+    "Why should we hire you",
+    "What are your strengths"
+  ];
 
-  useEffect(()=>{
+  const [text, setText] = useState("");
 
-    const timer=setTimeout(()=>{
+  useEffect(() => {
+    setText(questions[0]);
+  }, []);
 
-      setText(questions[index].substring(0,char+1));
-      setChar(char+1);
-
-      if(char===questions[index].length){
-        setTimeout(()=>{
-          setChar(0);
-          setIndex((index+1)%questions.length);
-        },2000);
-      }
-
-    },70);
-
-    return()=>clearTimeout(timer);
-
-  },[char,index]);
-
-  return <span>{text}</span>
-
+  return <p>{text}</p>;
 }
