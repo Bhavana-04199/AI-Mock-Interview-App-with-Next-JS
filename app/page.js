@@ -1,46 +1,37 @@
 "use client";
 
-import AIInterviewIllustration from "./components/AIInterviewIllustration";
+import NeuralBackground from "./components/NeuralBackground";
+import TypingText from "./components/TypingText";
 
 export default function Home() {
   return (
-    <main className="hero">
+    <main className="main-container">
 
-      {/* Animated Background */}
-      <div className="gradient-bg"></div>
+      {/* Animated AI Background */}
+      <NeuralBackground />
 
-      {/* Floating Particles */}
-      <div className="particles">
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
+      {/* Hero Content */}
+      <div className="hero">
 
-      {/* Content */}
-      <div className="hero-content">
-
-        <h1 className="hero-title">
+        <h1 className="title">
           Virtual AI Interview
         </h1>
 
-        <p className="hero-subtitle">
-          Practice interviews with an AI-powered system and
-          improve your confidence before real job interviews.
+        <p className="subtitle">
+          Practice interviews with an AI powered system
         </p>
 
+        {/* AI Typing Question */}
+        <div className="ai-question">
+          <TypingText />
+        </div>
+
         <button
-          className="hero-btn"
+          className="start-btn"
           onClick={() => (window.location.href = "/dashboard")}
         >
-          Get Started
+          Start Interview
         </button>
-
-        {/* Illustration */}
-        <div className="hero-illustration">
-          <AIInterviewIllustration />
-        </div>
 
       </div>
 
