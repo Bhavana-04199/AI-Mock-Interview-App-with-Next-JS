@@ -1,10 +1,13 @@
 "use client";
 
 export default function NeuralBackground() {
+
+  const particles = Array.from({ length: 30 });
+
   return (
-    <div>
-      {Array.from({ length: 40 }).map((_, i) => (
-        <span key={i}>•</span>
+    <div className="neural-bg">
+      {particles.map((_, i) => (
+        <span key={i} className="particle"></span>
       ))}
     </div>
   );
