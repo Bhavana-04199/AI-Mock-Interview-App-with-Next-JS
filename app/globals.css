@@ -67,109 +67,54 @@
   }
 /* RESET */
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial, Helvetica, sans-serif;
-}
-
 body{
-font-family:Arial;
-background:black;
+margin:0;
+background:#0f172a;
 color:white;
-text-align:center;
-padding-top:100px;
+font-family:Arial;
 }
-
-button{
-padding:10px 20px;
-margin-top:20px;
-}
-
-/* MAIN */
 
 .main-container{
 height:100vh;
 display:flex;
-align-items:center;
 justify-content:center;
+align-items:center;
 position:relative;
 }
-
-/* HERO CARD */
 
 .hero{
-position:relative;
-z-index:2;
 text-align:center;
+background:#1e293b;
 padding:40px;
-border-radius:20px;
-background:rgba(255,255,255,0.05);
-backdrop-filter:blur(15px);
-box-shadow:0 0 40px rgba(0,0,0,0.5);
-max-width:700px;
-display:flex;
-flex-direction:column;
-align-items:center;
+border-radius:12px;
+z-index:2;
 }
-/* IMAGE */
-
-.illustration{
-margin-top:25px;
-margin-bottom:20px;
-display:flex;
-justify-content:center;
-}
-/* TITLE */
 
 .title{
-font-size:60px;
-font-weight:bold;
-margin-bottom:10px;
-background:linear-gradient(90deg,#3b82f6,#38bdf8);
--webkit-background-clip:text;
--webkit-text-fill-color:transparent;
+font-size:40px;
+margin-top:10px;
 }
-
-/* SUBTITLE */
 
 .subtitle{
 color:#94a3b8;
-margin-bottom:25px;
-font-size:18px;
+margin-bottom:20px;
 }
-
-/* AI QUESTION */
-
-.ai-question{
-margin-top:10px;
-margin-bottom:25px;
-font-size:20px;
-color:#38bdf8;
-min-height:30px;
-}
-
-/* BUTTON */
-
-/* BUTTON */
 
 .start-btn{
-padding:14px 40px;
-font-size:18px;
+margin-top:20px;
+padding:12px 30px;
 border:none;
-border-radius:8px;
 background:#2563eb;
+color:white;
+border-radius:6px;
 cursor:pointer;
-transition:0.3s;
 }
 
-.start-btn:hover{
-background:#1d4ed8;
-transform:scale(1.05);
+.typing-text{
+margin-top:15px;
+color:#38bdf8;
+font-size:18px;
 }
-
-/* NEURAL BACKGROUND */
 
 .neural-bg{
 position:absolute;
@@ -178,23 +123,21 @@ left:0;
 width:100%;
 height:100%;
 overflow:hidden;
-z-index:1;
 }
 
-.neural-bg span{
+.particle{
 position:absolute;
 width:6px;
 height:6px;
 background:#38bdf8;
 border-radius:50%;
-animation:move 20s linear infinite;
-opacity:0.7;
+animation:float 12s linear infinite;
 }
 
-.neural-bg span:nth-child(odd){
-background:#3b82f6;
+@keyframes float{
+0%{transform:translateY(100vh)}
+100%{transform:translateY(-10vh)}
 }
-
 @keyframes move{
 
 0%{
