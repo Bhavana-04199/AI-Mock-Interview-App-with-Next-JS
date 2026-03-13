@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="relative flex items-center justify-center h-screen overflow-hidden bg-black">
+    <div className="relative flex items-center justify-center h-screen overflow-hidden">
 
-      {/* Animated Gradient Background */}
+      {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-900 via-black to-purple-900 animate-gradient"></div>
 
-      {/* Floating Circles */}
+      {/* Floating Animation */}
       <div className="absolute inset-0 overflow-hidden">
         <span className="circle"></span>
         <span className="circle"></span>
@@ -18,8 +18,12 @@ export default function Home() {
         <span className="circle"></span>
       </div>
 
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
+
       {/* Content */}
       <div className="relative z-10 text-center text-white px-6 max-w-xl">
+
         <h1 className="text-5xl md:text-6xl font-bold mb-6">
           Virtual AI Interview
         </h1>
@@ -34,8 +38,8 @@ export default function Home() {
         >
           Get Started
         </Button>
-      </div>
 
+      </div>
     </div>
   );
 }
