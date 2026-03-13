@@ -4,44 +4,59 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="relative flex items-center justify-center h-screen overflow-hidden">
+    <div className="hero-container">
 
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/images/ai-interview-animated.svg')",
-        }}
-      />
+      {/* Animated Gradient Background */}
+      <div className="gradient-bg"></div>
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/70"></div>
+      {/* Animated Particles */}
+      <div className="particles">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
 
-      {/* Floating Animation */}
-      <div className="absolute inset-0">
-        <span className="particle"></span>
-        <span className="particle"></span>
-        <span className="particle"></span>
-        <span className="particle"></span>
-        <span className="particle"></span>
+      {/* AI Interview Illustration */}
+      <div className="ai-illustration">
+
+        {/* Human */}
+        <div className="human">
+          <div className="head"></div>
+          <div className="body"></div>
+        </div>
+
+        {/* Robot */}
+        <div className="robot">
+          <div className="robot-head">
+            <div className="eye"></div>
+            <div className="eye"></div>
+          </div>
+          <div className="robot-body"></div>
+        </div>
+
+        {/* Table */}
+        <div className="table"></div>
+
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center text-white px-6 max-w-xl">
+      <div className="hero-content">
 
-        <h1 className="text-5xl md:text-6xl font-bold mb-6">
+        <h1 className="title">
           Virtual AI Interview
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-300 mb-8">
-          Tailored Interview Practice for AI Enthusiasts
+        <p className="subtitle">
+          Practice real interviews with AI-powered questions and instant feedback
         </p>
 
         <Button
-          className="bg-blue-600 hover:bg-blue-700 px-8 py-3 text-lg rounded-lg shadow-lg transition"
+          className="start-btn"
           onClick={() => (window.location.href = "/dashboard")}
         >
-          Get Started
+          Start Interview
         </Button>
 
       </div>
