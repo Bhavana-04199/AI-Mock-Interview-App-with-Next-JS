@@ -7,10 +7,8 @@ export default function Home() {
   return (
     <main className="main-container">
 
-      {/* Animated AI Background */}
       <NeuralBackground />
 
-      {/* Hero Content */}
       <div className="hero">
 
         <h1 className="title">
@@ -21,7 +19,6 @@ export default function Home() {
           Practice interviews with an AI powered system
         </p>
 
-        {/* AI Typing Question */}
         <div className="ai-question">
           <TypingText />
         </div>
