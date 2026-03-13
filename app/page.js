@@ -1,7 +1,7 @@
 "use client";
 
-import NeuralBackground from "./components/NeuralBackground";
-import TypingText from "./components/TypingText";
+import NeuralBackground from "./components/ui/NeuralBackground";
+import TypingText from "./components/ui/TypingText";
 
 export default function Home() {
   return (
