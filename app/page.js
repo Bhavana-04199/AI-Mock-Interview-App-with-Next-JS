@@ -17,7 +17,7 @@ export default function Home() {
         {/* Logo */}
         <div className="logo-container">
           <Image
-            src="/logo.png"
+            src="public/logo.svg"
             alt="AI Interview Logo"
             width={80}
             height={80}
