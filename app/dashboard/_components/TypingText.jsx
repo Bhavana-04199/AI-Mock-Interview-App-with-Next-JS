@@ -5,19 +5,22 @@ import { useEffect, useState } from "react";
 const questions = [
   "Tell me about yourself",
   "Why should we hire you?",
-  "Explain a challenging project you worked on",
-  "What are your strengths?",
+  "Explain your biggest strength",
+  "Describe a difficult project"
 ];
 
 export default function TypingText() {
+
   const [text, setText] = useState("");
   const [index, setIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
 
   useEffect(() => {
+
     if (charIndex < questions[index].length) {
+
       const timer = setTimeout(() => {
-        setText((prev) => prev + questions[index][charIndex]);
+        setText(prev => prev + questions[index][charIndex]);
         setCharIndex(charIndex + 1);
       }, 60);
 
@@ -31,6 +34,7 @@ export default function TypingText() {
     }, 2000);
 
     return () => clearTimeout(reset);
+
   }, [charIndex, index]);
 
   return (
